@@ -1,0 +1,190 @@
+# azure-pipelines-e2e.yml
+#
+# Playwright E2E pipeline — mirrors the structure of the existing azure-pipelines.yml.
+#
+# Real deployment context (from zip source):
+#   - Builds deploy to IIS on Windows VMs via Deployment Groups
+#   - Variable groups: LockBoxCashApp-DEV / LockBoxCashApp-UAT / LockBoxCashApp-Prod
+#   - Branches: dev → DEV, UAT → UAT, main → Prod
+#   - Existing pipeline runs Vitest unit tests via `npm run test` (RUN_TESTS flag)
+#
+# This pipeline adds an E2E stage that runs AFTER the existing Deploy stage
+# completes, targeting the freshly deployed environment.
+#
+# How to integrate:
+#   Option A: Paste the "E2E Test" stage block into the existing azure-pipelines.yml
+#             after the Deploy stage. Set RUN_E2E_TESTS = 'true' in variable groups.
+#   Option B: Run this as a separate pipeline triggered by the main pipeline's
+#             completion using pipeline resources.
+#
+# Variable group additions required (per environment group):
+#   PLAYWRIGHT_BASE_URL          e.g. http://lockbox-dev.internal
+#   TEST_LOCKBOX_API_KEY         matches LOCKBOX_API_KEY env var on the app
+#   TEST_ACCOUNTANT_EMAIL        seeded test user
+#   TEST_ACCOUNTANT_PASSWORD
+#   TEST_AR_ASSISTANT_EMAIL
+#   TEST_AR_ASSISTANT_PASSWORD
+#   TEST_SECURITY_ADMIN_EMAIL
+#   TEST_SECURITY_ADMIN_PASSWORD
+#   TEST_APP_ADMIN_EMAIL
+#   TEST_APP_ADMIN_PASSWORD
+#   TEST_GLOBAL_SUSPENSE_ACCOUNT_ID   stable seeded account ID
+#   TEST_CHECK_SUSPENSE_ACCOUNT_ID
+#   TEST_ACH_SUSPENSE_ACCOUNT_ID
+
+trigger: none   # Triggered by the main pipeline, not directly by branch push
+
+resources:
+  pipelines:
+    - pipeline: main-build
+      source: 'LockBoxCashApp-Main'    # Name of the existing azure-pipelines.yml pipeline
+      trigger:
+        branches:
+          include:
+            - dev
+            - UAT
+
+variables:
+  - ${{ if eq(variables['Build.SourceBranchName'], 'dev') }}:
+      - group: LockBoxCashApp-DEV
+      - name: ENV
+        value: "dev"
+  - ${{ if eq(variables['Build.SourceBranchName'], 'UAT') }}:
+      - group: LockBoxCashApp-UAT
+      - name: ENV
+        value: "uat"
+  - name: NODE_VERSION
+    value: '20.x'
+  - name: E2E_DIR
+    value: 'e2e-framework'   # subfolder where this framework lives in the repo
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: E2E
+    displayName: 'Playwright E2E Tests'
+    jobs:
+      - job: PlaywrightE2E
+        displayName: 'Run E2E Tests ($(ENV))'
+        timeoutInMinutes: 30
+        steps:
+
+          - checkout: self
+            displayName: 'Checkout Repository'
+
+          - task: NodeTool@0
+            displayName: 'Setup Node.js $(NODE_VERSION)'
+            inputs:
+              versionSpec: '$(NODE_VERSION)'
+
+          # Cache Playwright browser binaries (~300MB) across runs
+          - task: Cache@2
+            displayName: 'Cache Playwright browsers'
+            inputs:
+              key: 'playwright | "$(Agent.OS)" | $(E2E_DIR)/package-lock.json'
+              restoreKeys: 'playwright | "$(Agent.OS)"'
+              path: '$(Pipeline.Workspace)/.playwright'
+
+          - script: |
+              cd $(E2E_DIR)
+              npm ci
+            displayName: 'Install E2E dependencies'
+
+          - script: |
+              cd $(E2E_DIR)
+              PLAYWRIGHT_BROWSERS_PATH=$(Pipeline.Workspace)/.playwright \
+              npx playwright install chromium --with-deps
+            displayName: 'Install Playwright browsers'
+
+          # Write .env.playwright from variable group secrets
+          - script: |
+              cd $(E2E_DIR)
+              cat > .env.playwright << EOF
+              PLAYWRIGHT_BASE_URL=$(PLAYWRIGHT_BASE_URL)
+              TEST_LOCKBOX_API_KEY=$(TEST_LOCKBOX_API_KEY)
+              TEST_ACCOUNTANT_EMAIL=$(TEST_ACCOUNTANT_EMAIL)
+              TEST_ACCOUNTANT_PASSWORD=$(TEST_ACCOUNTANT_PASSWORD)
+              TEST_AR_ASSISTANT_EMAIL=$(TEST_AR_ASSISTANT_EMAIL)
+              TEST_AR_ASSISTANT_PASSWORD=$(TEST_AR_ASSISTANT_PASSWORD)
+              TEST_SECURITY_ADMIN_EMAIL=$(TEST_SECURITY_ADMIN_EMAIL)
+              TEST_SECURITY_ADMIN_PASSWORD=$(TEST_SECURITY_ADMIN_PASSWORD)
+              TEST_APP_ADMIN_EMAIL=$(TEST_APP_ADMIN_EMAIL)
+              TEST_APP_ADMIN_PASSWORD=$(TEST_APP_ADMIN_PASSWORD)
+              TEST_GLOBAL_SUSPENSE_ACCOUNT_ID=$(TEST_GLOBAL_SUSPENSE_ACCOUNT_ID)
+              TEST_CHECK_SUSPENSE_ACCOUNT_ID=$(TEST_CHECK_SUSPENSE_ACCOUNT_ID)
+              TEST_ACH_SUSPENSE_ACCOUNT_ID=$(TEST_ACH_SUSPENSE_ACCOUNT_ID)
+              EOF
+            displayName: 'Write .env.playwright'
+            env:
+              TEST_ACCOUNTANT_PASSWORD:    $(TEST_ACCOUNTANT_PASSWORD)
+              TEST_AR_ASSISTANT_PASSWORD:  $(TEST_AR_ASSISTANT_PASSWORD)
+              TEST_SECURITY_ADMIN_PASSWORD: $(TEST_SECURITY_ADMIN_PASSWORD)
+              TEST_APP_ADMIN_PASSWORD:     $(TEST_APP_ADMIN_PASSWORD)
+              TEST_LOCKBOX_API_KEY:        $(TEST_LOCKBOX_API_KEY)
+
+          # ── Auth setup (must run before all tests) ──────────────────────────
+          - script: |
+              cd $(E2E_DIR)
+              PLAYWRIGHT_BROWSERS_PATH=$(Pipeline.Workspace)/.playwright \
+              npx playwright test --project=setup
+            displayName: 'Auth Setup — save role sessions'
+            continueOnError: false   # Hard fail: no auth = no tests
+
+          # ── API tests (parallel, no browser needed) ─────────────────────────
+          - script: |
+              cd $(E2E_DIR)
+              PLAYWRIGHT_BROWSERS_PATH=$(Pipeline.Workspace)/.playwright \
+              npx playwright test --project=api \
+                --reporter=list,junit \
+                --output=test-results/api
+            displayName: 'Run API Tests'
+            continueOnError: true    # Collect all results before failing
+
+          # ── UI tests (Chromium) ─────────────────────────────────────────────
+          - script: |
+              cd $(E2E_DIR)
+              PLAYWRIGHT_BROWSERS_PATH=$(Pipeline.Workspace)/.playwright \
+              npx playwright test --project=ui:chromium \
+                --reporter=list,junit \
+                --output=test-results/ui
+            displayName: 'Run UI Tests'
+            continueOnError: true
+
+          # ── Publish JUnit results ───────────────────────────────────────────
+          - task: PublishTestResults@2
+            displayName: 'Publish API Test Results'
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles:  '$(E2E_DIR)/test-results/junit.xml'
+              testRunTitle:      'Playwright E2E — $(ENV)'
+              mergeTestResults:  true
+
+          # ── Publish HTML report + traces as SOX-compliant artifacts ─────────
+          # Traces contain screenshots, network requests, DOM snapshots.
+          # Retain for 7 years per SOX data retention policy.
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Playwright HTML Report'
+            condition: always()
+            inputs:
+              artifactName: 'playwright-report-$(ENV)-$(Build.BuildNumber)'
+              targetPath:   '$(E2E_DIR)/playwright-report'
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Playwright Traces (SOX Evidence)'
+            condition: always()
+            inputs:
+              artifactName: 'playwright-traces-$(ENV)-$(Build.BuildNumber)'
+              targetPath:   '$(E2E_DIR)/test-results'
+
+          # ── Fail the pipeline if any test failed ────────────────────────────
+          - script: |
+              cd $(E2E_DIR)
+              # Exit non-zero if junit.xml contains failures
+              if grep -q 'failures="[1-9]' test-results/junit.xml 2>/dev/null; then
+                echo "##[error]Playwright tests reported failures."
+                exit 1
+              fi
+            displayName: 'Gate on test results'
+            condition: always()
