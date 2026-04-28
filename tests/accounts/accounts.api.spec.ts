@@ -1,5 +1,5 @@
 /**
- * e2e/tests/accounts/accounts.api.spec.ts
+ * tests/accounts/accounts.api.spec.ts
  *
  * API tests for suspense account operations.
  *

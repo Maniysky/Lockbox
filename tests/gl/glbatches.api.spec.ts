@@ -1,5 +1,5 @@
 /**
- * e2e/tests/gl/glbatches.api.spec.ts
+ * tests/gl/glbatches.api.spec.ts
  *
  * API tests for General Ledger batch operations.
  *

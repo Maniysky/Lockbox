@@ -1,5 +1,5 @@
 /**
- * e2e/pages/index.ts
+ * pages/index.ts
  *
  * Page Object Models for BOA LockBox Processing & Cash Application.
  *

@@ -1,5 +1,5 @@
 /**
- * e2e/tests/rbac/permissions.api.spec.ts
+ * tests/rbac/permissions.api.spec.ts
  *
  * API-layer RBAC tests — exercises the withPermission() middleware
  * (src/server/middleware/withPermission.ts) against live Next.js route handlers.

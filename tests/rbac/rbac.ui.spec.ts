@@ -1,5 +1,5 @@
 /**
- * e2e/tests/rbac/rbac.ui.spec.ts
+ * tests/rbac/rbac.ui.spec.ts
  *
  * UI-layer RBAC tests — verifies that PermissionGate and PermissionButton
  * (src/components/PermissionGate.tsx, src/components/PermissionButton/index.tsx)

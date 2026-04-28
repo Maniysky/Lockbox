@@ -1,5 +1,5 @@
 /**
- * e2e/tests/admin/users-roles.api.spec.ts
+ * tests/admin/users-roles.api.spec.ts
  *
  * API tests for user and role administration.
  *

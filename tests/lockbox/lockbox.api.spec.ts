@@ -1,5 +1,5 @@
 /**
- * e2e/tests/lockbox/lockbox.api.spec.ts
+ * tests/lockbox/lockbox.api.spec.ts
  *
  * API-level tests for the LockBox processing pipeline.
  *

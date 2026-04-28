@@ -18,7 +18,7 @@
 #             completion using pipeline resources.
 #
 # Variable group additions required (per environment group):
-#   PLAYWRIGHT_BASE_URL          e.g. http://lockbox-dev.internal
+#   PLAYWRIGHT_BASE_URL          origin only, e.g. https://devwww01.skywardins.com:8000
 #   TEST_LOCKBOX_API_KEY         matches LOCKBOX_API_KEY env var on the app
 #   TEST_ACCOUNTANT_EMAIL        seeded test user
 #   TEST_ACCOUNTANT_PASSWORD
@@ -28,6 +28,8 @@
 #   TEST_SECURITY_ADMIN_PASSWORD
 #   TEST_APP_ADMIN_EMAIL
 #   TEST_APP_ADMIN_PASSWORD
+#   PLAYWRIGHT_AUTH_MODE         optional: credentials (default) | sso (Microsoft Entra)
+#   PLAYWRIGHT_SSO_BUTTON_LABEL  optional: substring for SSO control on /login
 #   TEST_GLOBAL_SUSPENSE_ACCOUNT_ID   stable seeded account ID
 #   TEST_CHECK_SUSPENSE_ACCOUNT_ID
 #   TEST_ACH_SUSPENSE_ACCOUNT_ID
@@ -56,7 +58,7 @@ variables:
   - name: NODE_VERSION
     value: '20.x'
   - name: E2E_DIR
-    value: 'e2e-framework'   # subfolder where this framework lives in the repo
+    value: '.'   # framework lives at repository root
 
 pool:
   vmImage: 'ubuntu-latest'

@@ -1,5 +1,5 @@
 /**
- * e2e/tests/e2e/business-flows.spec.ts
+ * tests/e2e/business-flows.spec.ts
  *
  * End-to-end business flow tests — exercises complete BRD workflows
  * through the UI, verifying each step via subsequent API calls.

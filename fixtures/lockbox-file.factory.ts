@@ -1,5 +1,5 @@
 /**
- * e2e/fixtures/lockbox-file.factory.ts
+ * fixtures/lockbox-file.factory.ts
  *
  * Generates pipe-delimited LockBox test files matching the exact BRD §5.12.2
  * column spec enforced by src/lib/lockboxPipeColumns.ts:

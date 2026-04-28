@@ -10,11 +10,17 @@
     "rootDir": ".",
     "skipLibCheck": true,
     "paths": {
-      "@fixtures/*": ["./e2e/fixtures/*"],
-      "@pages/*":    ["./e2e/pages/*"],
-      "@utils/*":    ["./e2e/utils/*"]
+      "@fixtures/*": ["./fixtures/*"],
+      "@pages/*":    ["./pages/*"],
+      "@utils/*":    ["./utils/*"]
     }
   },
-  "include": ["e2e/**/*.ts", "playwright.config.ts"],
+  "include": [
+    "fixtures/**/*.ts",
+    "pages/**/*.ts",
+    "tests/**/*.ts",
+    "utils/**/*.ts",
+    "playwright.config.ts"
+  ],
   "exclude": ["node_modules", "dist", "playwright-report", "test-results"]
 }

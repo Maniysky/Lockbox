@@ -8,15 +8,19 @@ Sits on top of the existing **Vitest unit tests** already in `src/`.
 | Layer | Tool | Location | What it tests |
 |---|---|---|---|
 | Unit | Vitest | `src/**/*.test.ts` | Services, repositories, middleware, parser — mocked DB |
-| **E2E / API** | **Playwright** | `e2e/tests/**` | Real running app + real SQL Server DB |
+| **E2E / API** | **Playwright** | `tests/**` | Real running app + real SQL Server DB |
 
 ## Quick start
 
 ```bash
 npm install
 npx playwright install chromium
-cp .env.playwright.example .env.playwright
+cp .env.playwright.example .env.playwright # macOS/Linux
+copy .env.playwright.example .env.playwright # Windows (cmd)
 # Edit .env.playwright — set PLAYWRIGHT_BASE_URL and test credentials
+
+# Microsoft Entra (SSO): set PLAYWRIGHT_AUTH_MODE=sso and use Entra passwords
+# for each TEST_* user. MFA is not automated — use policy-exempt test accounts.
 
 npx playwright test --project=setup        # authenticate all roles
 npx playwright test --project=api          # API tests (fast, no browser)
@@ -28,19 +32,18 @@ npx playwright show-report                 # open HTML report
 ## Structure
 
 ```
-e2e/
-├── fixtures/
-│   ├── auth.setup.ts            Signs in as all 4 roles, saves storageState
-│   ├── roles.fixture.ts         Per-role Page + APIRequestContext fixtures
-│   └── lockbox-file.factory.ts  Pipe-delimited file generator
-├── pages/index.ts               Page Object Models for all app routes
-└── tests/
-    ├── rbac/        permissions.api.spec.ts  rbac.ui.spec.ts
-    ├── lockbox/     lockbox.api.spec.ts
-    ├── accounts/    accounts.api.spec.ts
-    ├── gl/          glbatches.api.spec.ts
-    ├── admin/       users-roles.api.spec.ts
-    └── e2e/         business-flows.spec.ts
+fixtures/
+├── auth.setup.ts            Signs in as all 4 roles, saves storageState
+├── roles.fixture.ts         Per-role Page + APIRequestContext fixtures
+└── lockbox-file.factory.ts  Pipe-delimited file generator
+pages/index.ts               Page Object Models for all app routes
+tests/
+├── rbac/        permissions.api.spec.ts  rbac.ui.spec.ts
+├── lockbox/     lockbox.api.spec.ts
+├── accounts/    accounts.api.spec.ts
+├── gl/          glbatches.api.spec.ts
+├── admin/       users-roles.api.spec.ts
+└── e2e/         business-flows.spec.ts
 ```
 
 ## Database seeds required

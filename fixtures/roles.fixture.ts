@@ -1,5 +1,5 @@
 /**
- * e2e/fixtures/roles.fixture.ts
+ * fixtures/roles.fixture.ts
  *
  * Exports a `test` object extended with per-role Page fixtures.
  * Each fixture creates a fresh browser context with the saved storageState

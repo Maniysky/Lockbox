@@ -21,23 +21,38 @@ import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env.playwright" });
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+const BASE_URL =
+  process.env.PLAYWRIGHT_BASE_URL ?? "https://devwww01.skywardins.com:8000";
+const HEADLESS =
+  process.env.PLAYWRIGHT_HEADLESS === undefined
+    ? true
+    : !["false", "0", "no", "off"].includes(
+        process.env.PLAYWRIGHT_HEADLESS.toLowerCase(),
+      );
 
 export default defineConfig({
-  testDir: "./e2e/tests",
+  testDir: "./tests",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : 1,
 
   reporter: [
-    ["html",  { outputFolder: "playwright-report", open: "never" }],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
     ["junit", { outputFile: "test-results/junit.xml" }],
     ["list"],
+    [
+      "./utils/reporter/custom-html-reporter.ts",
+      {
+        outputFolder: "test-results/custom-html-report",
+        reportTitle: "LockBox Test Automation Report",
+      },
+    ],
   ],
 
   use: {
     baseURL: BASE_URL,
+    headless: HEADLESS,
     trace:      "on-first-retry",
     video:      "on-first-retry",
     screenshot: "only-on-failure",
@@ -47,6 +62,7 @@ export default defineConfig({
   projects: [
     {
       name: "setup",
+      testDir: "./fixtures",
       testMatch: "**/auth.setup.ts",
       use: { ...devices["Desktop Chrome"] },
     },
